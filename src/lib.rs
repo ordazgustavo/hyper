@@ -1,8 +1,18 @@
-use nom::{branch::alt, bytes::complete::tag, combinator::value, IResult};
+use nom::{
+    branch::alt,
+    bytes::complete::tag,
+    character::streaming::char,
+    combinator::{map, opt, value},
+    multi::many1,
+    sequence::{delimited, preceded, tuple},
+    IResult,
+};
 use std::collections::HashMap;
 
+mod string;
 mod utils;
 
+use string::parse_string;
 use utils::*;
 
 #[derive(Debug, PartialEq)]
@@ -42,7 +52,7 @@ pub struct Content {
 
 #[derive(Debug, PartialEq)]
 pub enum Child {
-    Text(Loc),
+    Text(Loc, String),
     Element(Element),
 }
 
@@ -56,13 +66,35 @@ fn parse_tag(input: Span) -> IResult<Span, Tag> {
     ))(input)
 }
 
+fn parse_text_node(input: Span) -> IResult<Span, Vec<Child>> {
+    located(parse_string, |loc, value| vec![Child::Text(loc, value)])(input)
+}
+
+fn parse_child_element(input: Span) -> IResult<Span, Vec<Child>> {
+    delimited(
+        char('{'),
+        many1(map(parse_element, Child::Element)),
+        char('}'),
+    )(input)
+}
+
+fn parse_content(input: Span) -> IResult<Span, Content> {
+    located(
+        alt((parse_text_node, parse_child_element)),
+        |loc, children| Content { loc, children },
+    )(input)
+}
+
 fn parse_element(input: Span) -> IResult<Span, Element> {
-    located(parse_tag, |loc, tag| Element {
-        loc,
-        tag,
-        attributes: None,
-        content: None,
-    })(input)
+    located(
+        tuple((parse_tag, preceded(sp, opt(parse_content)))),
+        |loc, (tag, content)| Element {
+            loc,
+            tag,
+            attributes: None,
+            content,
+        },
+    )(input)
 }
 
 pub struct Parser {}
@@ -73,7 +105,7 @@ impl Parser {
             located(parse_element, |loc, content| Document { loc, content })(source.into());
         match result {
             Ok((_, content)) => Ok(content),
-            Err(_) => Err(format!("Failed to parse source")),
+            Err(e) => Err(format!("Failed to parse source {}", e)),
         }
     }
 }
@@ -86,20 +118,66 @@ mod test {
     #[test]
     fn it_works() {
         assert_eq!(
-            Parser::parse("html").unwrap(),
+            Parser::parse("html {}").unwrap(),
             Document {
                 loc: Loc {
                     start: Position { line: 1, column: 1 },
-                    end: Position { line: 1, column: 5 },
+                    end: Position { line: 1, column: 6 },
                 },
                 content: Element {
                     loc: Loc {
                         start: Position { line: 1, column: 1 },
-                        end: Position { line: 1, column: 5 },
+                        end: Position { line: 1, column: 6 },
                     },
                     tag: Tag::Html,
                     attributes: None,
                     content: None,
+                }
+            }
+        )
+    }
+
+    #[test]
+    fn it_parses_tag_with_child_text_node() {
+        assert_eq!(
+            Parser::parse(r#"h1 "Page Title""#).unwrap(),
+            Document {
+                loc: Loc {
+                    start: Position { line: 1, column: 1 },
+                    end: Position {
+                        line: 1,
+                        column: 16
+                    },
+                },
+                content: Element {
+                    loc: Loc {
+                        start: Position { line: 1, column: 1 },
+                        end: Position {
+                            line: 1,
+                            column: 16
+                        },
+                    },
+                    tag: Tag::H1,
+                    attributes: None,
+                    content: Some(Content {
+                        loc: Loc {
+                            start: Position { line: 1, column: 4 },
+                            end: Position {
+                                line: 1,
+                                column: 16
+                            },
+                        },
+                        children: vec![Child::Text(
+                            Loc {
+                                start: Position { line: 1, column: 4 },
+                                end: Position {
+                                    line: 1,
+                                    column: 16
+                                },
+                            },
+                            "Page Title".to_owned()
+                        )]
+                    }),
                 }
             }
         )
