@@ -1,5 +1,7 @@
 use hyper::prelude::*;
 
+// use std::collections::HashMap;
+
 #[cfg(test)]
 use pretty_assertions::assert_eq;
 
@@ -33,7 +35,7 @@ fn it_works() {
 }
 
 #[test]
-fn it_parses_tag_with_child_text_node() {
+fn it_parses_element_with_child_text_node() {
     assert_eq!(
         Parser::parse(r#"h1 "Page Title""#).unwrap(),
         Document {
@@ -45,6 +47,33 @@ fn it_parses_tag_with_child_text_node() {
                 content: Some(Content {
                     loc: gen_loc(1, 4, 16),
                     children: vec![Child::Text(gen_loc(1, 4, 16), "Page Title".to_owned())]
+                }),
+            }
+        }
+    )
+}
+
+#[test]
+fn it_parses_element_with_attributes() {
+    assert_eq!(
+        Parser::parse(r#"h1 [className="the-title"; data-heading="main"] "Page Title""#).unwrap(),
+        Document {
+            loc: gen_loc(1, 1, 61),
+            content: Element {
+                loc: gen_loc(1, 1, 61),
+                tag: Tag::H1,
+                attributes: Some(Attributes {
+                    loc: gen_loc(1, 4, 48),
+                    attr: vec![
+                        ("className".to_owned(), "the-title".to_owned()),
+                        ("data-heading".to_owned(), "main".to_owned())
+                    ]
+                    .into_iter()
+                    .collect()
+                }),
+                content: Some(Content {
+                    loc: gen_loc(1, 49, 61),
+                    children: vec![Child::Text(gen_loc(1, 49, 61), "Page Title".to_owned())]
                 }),
             }
         }

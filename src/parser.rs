@@ -1,12 +1,16 @@
 use nom::{
     branch::alt,
     bytes::complete::tag,
-    character::streaming::char,
-    combinator::{map, opt, value},
-    multi::many1,
-    sequence::{delimited, preceded, tuple},
+    character::{
+        complete::{alpha1, alphanumeric1},
+        streaming::char,
+    },
+    combinator::{map, opt, recognize, value},
+    multi::{many0, many1, separated_list1},
+    sequence::{delimited, pair, preceded, separated_pair, tuple},
     IResult,
 };
+use std::collections::HashMap;
 
 use crate::{ast::*, string::parse_string, utils::*};
 
@@ -39,13 +43,46 @@ fn parse_content(input: Span) -> IResult<Span, Content> {
     )(input)
 }
 
+fn id(input: Span) -> IResult<Span, Span> {
+    recognize(pair(
+        alt((alpha1, tag("-"))),
+        many0(alt((alphanumeric1, tag("-")))),
+    ))(input)
+}
+
+fn key_value(input: Span) -> IResult<Span, (Span, String)> {
+    separated_pair(id, preceded(sp, char('=')), preceded(sp, parse_string))(input)
+}
+
+fn parse_attr(input: Span) -> IResult<Span, HashMap<String, String>> {
+    map(
+        separated_list1(preceded(sp, char(';')), preceded(sp, key_value)),
+        |tuple_vec| {
+            tuple_vec
+                .into_iter()
+                .map(|(k, v)| (String::from(*k.fragment()), v))
+                .collect()
+        },
+    )(input)
+}
+
+fn parse_attributes(input: Span) -> IResult<Span, Attributes> {
+    located(delimited(char('['), parse_attr, char(']')), |loc, attr| {
+        Attributes { loc, attr }
+    })(input)
+}
+
 fn parse_element(input: Span) -> IResult<Span, Element> {
     located(
-        tuple((parse_tag, preceded(sp, opt(parse_content)))),
-        |loc, (tag, content)| Element {
+        tuple((
+            parse_tag,
+            preceded(sp, opt(parse_attributes)),
+            preceded(sp, opt(parse_content)),
+        )),
+        |loc, (tag, attributes, content)| Element {
             loc,
             tag,
-            attributes: None,
+            attributes,
             content,
         },
     )(input)
