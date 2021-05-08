@@ -7,7 +7,8 @@ use utils::*;
 
 #[derive(Debug, PartialEq)]
 pub struct Document {
-    pub content: Vec<Element>,
+    pub loc: Loc,
+    pub content: Element,
 }
 
 #[derive(Debug, PartialEq)]
@@ -55,13 +56,26 @@ fn parse_tag(input: Span) -> IResult<Span, Tag> {
     ))(input)
 }
 
-pub fn parse_element(input: Span) -> IResult<Span, Element> {
+fn parse_element(input: Span) -> IResult<Span, Element> {
     located(parse_tag, |loc, tag| Element {
         loc,
         tag,
         attributes: None,
         content: None,
     })(input)
+}
+
+pub struct Parser {}
+
+impl Parser {
+    pub fn parse(source: &str) -> Result<Document, String> {
+        let result =
+            located(parse_element, |loc, content| Document { loc, content })(source.into());
+        match result {
+            Ok((_, content)) => Ok(content),
+            Err(_) => Err(format!("Failed to parse source")),
+        }
+    }
 }
 
 #[cfg(test)]
@@ -72,15 +86,21 @@ mod test {
     #[test]
     fn it_works() {
         assert_eq!(
-            parse_element("html".into()).unwrap().1,
-            Element {
+            Parser::parse("html").unwrap(),
+            Document {
                 loc: Loc {
                     start: Position { line: 1, column: 1 },
                     end: Position { line: 1, column: 5 },
                 },
-                tag: Tag::Html,
-                attributes: None,
-                content: None,
+                content: Element {
+                    loc: Loc {
+                        start: Position { line: 1, column: 1 },
+                        end: Position { line: 1, column: 5 },
+                    },
+                    tag: Tag::Html,
+                    attributes: None,
+                    content: None,
+                }
             }
         )
     }
