@@ -110,76 +110,7 @@ impl Parser {
     }
 }
 
-#[cfg(test)]
-mod test {
-    use super::*;
-    use pretty_assertions::assert_eq;
-
-    #[test]
-    fn it_works() {
-        assert_eq!(
-            Parser::parse("html {}").unwrap(),
-            Document {
-                loc: Loc {
-                    start: Position { line: 1, column: 1 },
-                    end: Position { line: 1, column: 6 },
-                },
-                content: Element {
-                    loc: Loc {
-                        start: Position { line: 1, column: 1 },
-                        end: Position { line: 1, column: 6 },
-                    },
-                    tag: Tag::Html,
-                    attributes: None,
-                    content: None,
-                }
-            }
-        )
-    }
-
-    #[test]
-    fn it_parses_tag_with_child_text_node() {
-        assert_eq!(
-            Parser::parse(r#"h1 "Page Title""#).unwrap(),
-            Document {
-                loc: Loc {
-                    start: Position { line: 1, column: 1 },
-                    end: Position {
-                        line: 1,
-                        column: 16
-                    },
-                },
-                content: Element {
-                    loc: Loc {
-                        start: Position { line: 1, column: 1 },
-                        end: Position {
-                            line: 1,
-                            column: 16
-                        },
-                    },
-                    tag: Tag::H1,
-                    attributes: None,
-                    content: Some(Content {
-                        loc: Loc {
-                            start: Position { line: 1, column: 4 },
-                            end: Position {
-                                line: 1,
-                                column: 16
-                            },
-                        },
-                        children: vec![Child::Text(
-                            Loc {
-                                start: Position { line: 1, column: 4 },
-                                end: Position {
-                                    line: 1,
-                                    column: 16
-                                },
-                            },
-                            "Page Title".to_owned()
-                        )]
-                    }),
-                }
-            }
-        )
-    }
+pub mod prelude {
+    pub use super::*;
+    pub use utils::*;
 }

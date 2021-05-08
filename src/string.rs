@@ -79,7 +79,7 @@ where
     ))(input)
 }
 
-pub fn parse_string<'a, E>(input: Span<'a>) -> IResult<Span<'a>, String, E>
+pub(crate) fn parse_string<'a, E>(input: Span<'a>) -> IResult<Span<'a>, String, E>
 where
     E: ParseError<Span<'a>> + FromExternalError<Span<'a>, std::num::ParseIntError>,
 {

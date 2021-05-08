@@ -24,7 +24,7 @@ impl From<nom_locate::LocatedSpan<&str>> for Position {
     }
 }
 
-pub fn located<'a, O1, O2, E, F, G>(
+pub(crate) fn located<'a, O1, O2, E, F, G>(
     mut first: F,
     mut second: G,
 ) -> impl FnMut(Span<'a>) -> IResult<Span, O2, E>
@@ -50,6 +50,6 @@ where
     }
 }
 
-pub fn sp<'a, E: ParseError<Span<'a>>>(input: Span<'a>) -> IResult<Span<'a>, Span<'a>, E> {
+pub(crate) fn sp<'a, E: ParseError<Span<'a>>>(input: Span<'a>) -> IResult<Span<'a>, Span<'a>, E> {
     take_while(|c| " \t\r\n".contains(c))(input)
 }
