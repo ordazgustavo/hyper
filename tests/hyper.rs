@@ -1,7 +1,5 @@
 use hyper::prelude::*;
 
-// use std::collections::HashMap;
-
 #[cfg(test)]
 use pretty_assertions::assert_eq;
 
@@ -77,5 +75,23 @@ fn it_parses_element_with_attributes() {
                 }),
             }
         }
+    )
+}
+
+#[test]
+fn it_compiles_source() {
+    let source = r#"
+    html {
+        head {
+            title "Hyper!"
+        }
+    }
+    "#;
+    let document = Parser::parse(source).unwrap();
+    let result = Compiler::compile(document);
+
+    assert_eq!(
+        result,
+        "<!DOCTYPE html><html><head><title>Hyper!</title></head></html>".to_owned()
     )
 }

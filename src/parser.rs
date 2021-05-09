@@ -74,11 +74,15 @@ fn parse_attributes(input: Span) -> IResult<Span, Attributes> {
 
 fn parse_element(input: Span) -> IResult<Span, Element> {
     located(
-        tuple((
-            parse_tag,
-            preceded(sp, opt(parse_attributes)),
-            preceded(sp, opt(parse_content)),
-        )),
+        delimited(
+            sp,
+            tuple((
+                parse_tag,
+                preceded(sp, opt(parse_attributes)),
+                preceded(sp, opt(parse_content)),
+            )),
+            opt(sp),
+        ),
         |loc, (tag, attributes, content)| Element {
             loc,
             tag,
