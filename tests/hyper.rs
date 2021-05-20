@@ -95,3 +95,23 @@ fn it_compiles_source() {
         "<!DOCTYPE html><html><head><title>Hyper!</title></head></html>".to_owned()
     )
 }
+
+#[test]
+fn it_compiles_self_closing_tags() {
+    let source = r#"
+    html {
+        head {
+            link [rel="preload"; href="/some/asset.png"]
+            title "Hyper!"
+        }
+    }
+    "#;
+    let document = Parser::parse(source).unwrap();
+    let result = Compiler::compile(document);
+
+    assert_eq!(
+        result,
+        r#"<!DOCTYPE html><html><head><link rel="preload" href="/some/asset.png"><title>Hyper!</title></head></html>"#
+            .to_owned()
+    )
+}
