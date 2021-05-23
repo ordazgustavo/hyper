@@ -4,9 +4,102 @@ use std::fmt;
 use crate::utils::Loc;
 
 #[derive(Debug, PartialEq)]
-pub struct Document {
+pub struct Program {
+    pub modules: Module,
+}
+
+#[derive(Debug, PartialEq)]
+pub struct Module {
     pub loc: Loc,
-    pub content: Element,
+    pub statements: Vec<Statement>,
+}
+
+impl fmt::Display for Module {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(
+            f,
+            "{}",
+            self.statements
+                .iter()
+                .map(|s| format!("{}", s))
+                .collect::<Vec<String>>()
+                .join("")
+        )
+    }
+}
+
+#[derive(Debug, PartialEq)]
+pub enum Statement {
+    Import,
+    Component(ComponentDef),
+}
+
+impl fmt::Display for Statement {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Statement::Import => write!(f, ""),
+            Statement::Component(e) => write!(f, "{}", e.body),
+        }
+    }
+}
+
+#[derive(Debug, PartialEq)]
+pub struct ComponentDef {
+    pub loc: Loc,
+    pub id: Id,
+    pub attributes: Vec<Id>,
+    pub body: Body,
+}
+
+impl fmt::Display for ComponentDef {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{}", self.body)
+    }
+}
+
+#[derive(Debug, PartialEq)]
+pub struct Id {
+    pub loc: Loc,
+    pub name: String,
+}
+
+#[derive(Debug, PartialEq)]
+pub struct Body {
+    pub loc: Loc,
+    pub children: Vec<Child>,
+}
+
+impl fmt::Display for Body {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(
+            f,
+            "{}",
+            self.children
+                .iter()
+                .map(|c| format!("{}", c))
+                .collect::<Vec<String>>()
+                .join("")
+        )
+    }
+}
+
+#[derive(Debug, PartialEq)]
+pub enum Child {
+    Text(TextNode),
+    Element(Element),
+    Component(ComponentExpr),
+}
+
+impl fmt::Display for Child {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Child::Text(text) => write!(f, "{}", text.value),
+            Child::Element(element) => write!(f, "{}", element),
+            Child::Component(component) => {
+                write!(f, "{}", component)
+            }
+        }
+    }
 }
 
 #[derive(Debug, PartialEq)]
@@ -14,7 +107,7 @@ pub struct Element {
     pub loc: Loc,
     pub tag: Tag,
     pub attributes: Option<Attributes>,
-    pub content: Option<Content>,
+    pub body: Body,
 }
 
 impl fmt::Display for Element {
@@ -31,11 +124,7 @@ impl fmt::Display for Element {
             format!("<{}{}>", self.tag, attr)
         };
 
-        let content = if let Some(content) = &self.content {
-            format!("{}", content)
-        } else {
-            String::new()
-        };
+        let content = format!("{}", &self.body);
 
         let closing_tag = if !self.tag.is_self_closing() {
             format!("</{}>", self.tag)
@@ -342,6 +431,26 @@ impl fmt::Display for Tag {
 }
 
 #[derive(Debug, PartialEq)]
+pub struct ComponentExpr {
+    pub loc: Loc,
+    pub id: Id,
+    pub attributes: Option<Attributes>,
+    pub body: Option<Body>,
+}
+
+impl fmt::Display for ComponentExpr {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(
+            f,
+            "{}",
+            self.body
+                .as_ref()
+                .map_or_else(|| String::default(), |b| format!("{}", b))
+        )
+    }
+}
+
+#[derive(Debug, PartialEq)]
 pub struct Attributes {
     pub loc: Loc,
     pub attr: HashMap<String, String>,
@@ -362,36 +471,7 @@ impl fmt::Display for Attributes {
 }
 
 #[derive(Debug, PartialEq)]
-pub struct Content {
+pub struct TextNode {
     pub loc: Loc,
-    pub children: Vec<Child>,
-}
-
-impl fmt::Display for Content {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(
-            f,
-            "{}",
-            self.children
-                .iter()
-                .map(|c| format!("{}", c))
-                .collect::<Vec<String>>()
-                .join("")
-        )
-    }
-}
-
-#[derive(Debug, PartialEq)]
-pub enum Child {
-    Text(Loc, String),
-    Element(Element),
-}
-
-impl fmt::Display for Child {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match self {
-            Child::Text(_, text) => write!(f, "{}", text),
-            Child::Element(element) => write!(f, "{}", element),
-        }
-    }
+    pub value: String,
 }

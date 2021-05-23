@@ -9,16 +9,16 @@ that the language requires
 
 ```
 html {
-	head {
-		title "Hyper!"
-	}
-	body {
-		h1 "The Hyper DSL"
-		p [className="paragraph"] {
-			"""Hyper is an HTML DSL focused on simplicity by reducing the inherent
-			verbosity that the language requires"""
-		}
-	}
+  head {
+    title "Hyper!"
+  }
+  body {
+    h1 "The Hyper DSL"
+    p [className="paragraph"] {
+      """Hyper is an HTML DSL focused on simplicity by reducing the inherent
+      verbosity that the language requires"""
+    }
+  }
 }
 ```
 
@@ -26,9 +26,9 @@ html {
 
 ```
 html {
-	head {
-		title "Hyper!"
-	}
+  head {
+    title "Hyper!"
+  }
 }
 ```
 
@@ -42,7 +42,7 @@ html head title "Hyper!"
 
 ```
 p [className="paragraph"; style="display: inline"] {
-	"My awesome paragraph"
+  "My awesome paragraph"
 }
 ```
 
@@ -50,11 +50,11 @@ p [className="paragraph"; style="display: inline"] {
 
 ```
 def Avatar = [src] {
-	img [src=src]
+  img [src=src]
 }
 
 div {
-	Avatar [src="..."]
+  Avatar [src="..."]
 }
 ```
 
@@ -62,11 +62,11 @@ Same name attribute
 
 ```
 def Avatar = [src] {
-	img [src=src] # This
+  img [src=src] # This
 }
 
 def Avatar = [src] {
-	img [src] # Can be like this
+  img [src] # Can be like this
 }
 ```
 
@@ -76,7 +76,7 @@ def Avatar = [src] {
 # avatar.hy
 
 pub def Avatar = [src] {
-	img [src=src]
+  img [src=src]
 }
 ```
 
@@ -86,7 +86,7 @@ pub def Avatar = [src] {
 use avatar::Avatar
 
 div {
-	Avatar [src="..."]
+  Avatar [src="..."]
 }
 ```
 
@@ -96,9 +96,9 @@ div {
 
 ```
 ul {
-	for name in names {
-		li name
-	}
+  for name in names {
+    li name
+  }
 }
 ```
 
@@ -106,11 +106,11 @@ ul {
 
 ```
 p {
-	if is_authenticated {
-		"Welcome"
-	} else {
-		"Please, login"
-	}
+  if is_authenticated {
+    "Welcome"
+  } else {
+    "Please, login"
+  }
 }
 ```
 

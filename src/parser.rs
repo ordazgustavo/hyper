@@ -6,7 +6,7 @@ use nom::{
         streaming::char,
     },
     combinator::{map, opt, recognize, value},
-    multi::{many0, many1, separated_list1},
+    multi::{many0, many1, separated_list0, separated_list1},
     sequence::{delimited, pair, preceded, separated_pair, tuple},
     IResult,
 };
@@ -157,33 +157,20 @@ fn parse_tag(input: Span) -> IResult<Span, Tag> {
     ))(input)
 }
 
-fn parse_text_node(input: Span) -> IResult<Span, Vec<Child>> {
-    located(parse_string, |loc, value| vec![Child::Text(loc, value)])(input)
-}
-
-fn parse_child_element(input: Span) -> IResult<Span, Vec<Child>> {
-    delimited(
-        char('{'),
-        many1(map(parse_element, Child::Element)),
-        char('}'),
-    )(input)
-}
-
-fn parse_content(input: Span) -> IResult<Span, Content> {
+fn id(input: Span) -> IResult<Span, Id> {
     located(
-        alt((parse_text_node, parse_child_element)),
-        |loc, children| Content { loc, children },
+        recognize(pair(
+            alt((alpha1, tag("-"))),
+            many0(alt((alphanumeric1, tag("-")))),
+        )),
+        |loc, name| Id {
+            loc,
+            name: (*name.fragment()).to_owned(),
+        },
     )(input)
 }
 
-fn id(input: Span) -> IResult<Span, Span> {
-    recognize(pair(
-        alt((alpha1, tag("-"))),
-        many0(alt((alphanumeric1, tag("-")))),
-    ))(input)
-}
-
-fn key_value(input: Span) -> IResult<Span, (Span, String)> {
+fn key_value(input: Span) -> IResult<Span, (Id, String)> {
     separated_pair(id, preceded(sp, char('=')), preceded(sp, parse_string))(input)
 }
 
@@ -193,7 +180,7 @@ fn parse_attr(input: Span) -> IResult<Span, HashMap<String, String>> {
         |tuple_vec| {
             tuple_vec
                 .into_iter()
-                .map(|(k, v)| (String::from(*k.fragment()), v))
+                .map(|(k, v)| (String::from(k.name), v))
                 .collect()
         },
     )(input)
@@ -207,30 +194,106 @@ fn parse_attributes(input: Span) -> IResult<Span, Attributes> {
 
 fn parse_element(input: Span) -> IResult<Span, Element> {
     located(
-        delimited(
-            sp,
-            tuple((
-                parse_tag,
-                preceded(sp, opt(parse_attributes)),
-                preceded(sp, opt(parse_content)),
-            )),
-            opt(sp),
-        ),
-        |loc, (tag, attributes, content)| Element {
+        tuple((
+            parse_tag,
+            preceded(sp, opt(parse_attributes)),
+            preceded(sp, parse_body),
+        )),
+        |loc, (tag, attributes, body)| Element {
             loc,
             tag,
             attributes,
-            content,
+            body,
         },
     )(input)
 }
 
-pub struct Parser {}
+fn parse_text_node(input: Span) -> IResult<Span, TextNode> {
+    located(parse_string, |loc, value| TextNode { loc, value })(input)
+}
+
+fn parse_component_expr(input: Span) -> IResult<Span, ComponentExpr> {
+    located(
+        tuple((
+            id,
+            preceded(sp, opt(parse_attributes)),
+            preceded(sp, opt(parse_body)),
+        )),
+        |loc, (id, attributes, body)| ComponentExpr {
+            loc,
+            id,
+            attributes,
+            body,
+        },
+    )(input)
+}
+
+fn parse_child(input: Span) -> IResult<Span, Child> {
+    alt((
+        map(parse_text_node, Child::Text),
+        map(parse_element, Child::Element),
+        map(parse_component_expr, Child::Component),
+    ))(input)
+}
+
+fn parse_body(input: Span) -> IResult<Span, Body> {
+    located(
+        delimited(
+            char('{'),
+            many0(preceded(sp, parse_child)),
+            preceded(sp, char('}')),
+        ),
+        |loc, children| Body { loc, children },
+    )(input)
+}
+
+fn parse_component_def_attr(input: Span) -> IResult<Span, Vec<Id>> {
+    delimited(
+        char('['),
+        separated_list0(preceded(sp, char(';')), preceded(sp, id)),
+        char(']'),
+    )(input)
+}
+
+fn parse_component_def(input: Span) -> IResult<Span, ComponentDef> {
+    located(
+        delimited(
+            sp,
+            tuple((
+                preceded(tag("def"), preceded(sp, id)),
+                preceded(
+                    preceded(sp, char('=')),
+                    preceded(sp, parse_component_def_attr),
+                ),
+                preceded(sp, parse_body),
+            )),
+            opt(sp),
+        ),
+        |loc, (id, attributes, body)| ComponentDef {
+            loc,
+            id,
+            attributes,
+            body,
+        },
+    )(input)
+}
+
+fn parse_statements(input: Span) -> IResult<Span, Vec<Statement>> {
+    many1(map(parse_component_def, |st| Statement::Component(st)))(input)
+}
+
+fn parse_module(input: Span) -> IResult<Span, Module> {
+    located(parse_statements, |loc, statements| Module {
+        loc,
+        statements,
+    })(input)
+}
+
+pub struct Parser;
 
 impl Parser {
-    pub fn parse(source: &str) -> Result<Document, String> {
-        let result =
-            located(parse_element, |loc, content| Document { loc, content })(source.into());
+    pub fn parse(source: &str) -> Result<Program, String> {
+        let result = map(parse_module, |module| Program { modules: module })(source.into());
         match result {
             Ok((_, content)) => Ok(content),
             Err(e) => Err(format!("Failed to parse source {}", e)),
